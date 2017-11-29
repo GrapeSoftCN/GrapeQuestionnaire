@@ -8,11 +8,17 @@ import apps.appsProxy;
 import interfaceModel.GrapeDBSpecField;
 import interfaceModel.GrapeTreeDBModel;
 import security.codec;
+import session.session;
 import string.StringHelper;
+import time.TimeHelper;
 
 public class Answer {
     private GrapeTreeDBModel answer;
     private GrapeDBSpecField gDbSpecField;
+    
+    private session se;
+    private JSONObject userInfo;
+    private String currentUID;
 
     public Answer() {
         answer = new GrapeTreeDBModel();
@@ -21,6 +27,11 @@ public class Answer {
         answer.descriptionModel(gDbSpecField);
         answer.bindApp();
 
+        se = new session();
+        userInfo = se.getDatas();
+        if (userInfo!=null && userInfo.size() > 0) {
+            currentUID = userInfo.getMongoID("_id");
+        }
     }
 
     /**
@@ -54,13 +65,31 @@ public class Answer {
         return getAnswerResult(eid, count);
     }
 
+    
+    /**
+     * 评定提交的答案
+     * @param aid
+     * @param result
+     * @return
+     */
+    @SuppressWarnings("unchecked")
+    public String Review(String aid,int result) {
+        String rs = rMsg.netMSG(100, "评定答案失败");
+        JSONObject object = new JSONObject();
+        object.put("userResult", result);
+        object.put("reviewer", currentUID);
+        object.put("reviewTime", TimeHelper.nowMillis());
+        object = answer.eq("_id", aid).data(object).update();
+        return (object!=null)?rMsg.netMSG(0, "评定答案成功"):rs;
+    }
+    
     /**
      * 获取本次问卷的结果
      * 
      * @return
      */
     @SuppressWarnings("unchecked")
-    public String getAnswerResult(String eid, long count) {
+    private String getAnswerResult(String eid, long count) {
         JSONObject object = new JSONObject();
         long rightCount = answer.eq("eid", eid).eq("userResult", 0).count(); // 用户答对题数
         long wrongCount = answer.eq("eid", eid).eq("userResult", 1).count(); // 用户答错题数
