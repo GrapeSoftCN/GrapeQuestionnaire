@@ -69,12 +69,12 @@ public class QuestionnaireInfo {
             return rMsg.netMSG(false, "页长度错误");
         }
         if (!StringHelper.InvaildString(wbid)) {
-            return rMsg.netMSG(false, "无效wbid");
+            return rMsg.netMSG(false, "无效网站id");
         }
         quest.eq("wbid", wbid);
         count = quest.dirty().count();
         array = quest.page(idx, pageSize);
-        return rMsg.netPAGE(idx, pageSize, count, array);
+        return rMsg.netPAGE(idx, pageSize, count, getUserName(array));
     }
 
     /**
@@ -103,7 +103,7 @@ public class QuestionnaireInfo {
         if (condArray != null && condArray.size() > 0) {
             array = quest.where(condArray).page(idx, pageSize);
         }
-        return rMsg.netPAGE(idx, pageSize, count, array);
+        return rMsg.netPAGE(idx, pageSize, count, getUserName(array));
     }
 
     /**
@@ -113,12 +113,156 @@ public class QuestionnaireInfo {
      * @return
      */
     public String getFront(String qid) {
+        long endTime = 0, startTime = 0;
         if (!StringHelper.InvaildString(qid)) {
             return rMsg.netMSG(false, "无效问卷id");
         }
         JSONObject object = quest.eq(pkString, qid).find();
-        object = setRandomQuest(object);
-        return rMsg.netMSG(true, object);
+        if (object != null && object.size() > 0) {
+            if (object.containsKey("startTime")) {
+                startTime = object.getLong("startTime");
+            }
+            if (startTime != 0 && startTime > TimeHelper.nowMillis()) {
+                return rMsg.netMSG(false, "该问卷还未到答题时间");
+            }
+            if (object.containsKey("endTime")) {
+                endTime = object.getLong("endTime");
+            }
+            if (endTime != 0 && endTime < TimeHelper.nowMillis()) {
+                return rMsg.netMSG(false, "该问卷已结束，暂不能进行作答");
+            }
+            object = setRandomQuest(object);
+        }
+        return rMsg.netMSG(true, getUserName(object));
+    }
+
+    @SuppressWarnings("unchecked")
+    private JSONArray getUserName(JSONArray array) {
+        JSONObject object;
+        JSONObject userInfos, columnInfo;
+        if (array != null && array.size() > 0) {
+            userInfos = getUserInfo(getUid(array));
+            columnInfo = getColumnInfo(getOgid(array));
+            for (int i = 0; i < array.size(); i++) {
+                object = (JSONObject) array.get(i);
+                array.set(i, FillName(object, userInfos, columnInfo));
+            }
+        }
+        return array;
+    }
+
+    private JSONObject getUserName(JSONObject object) {
+        JSONObject userInfos, columnInfo;
+        if (object != null && object.size() > 0) {
+            userInfos = getUserInfo(getUid(object));
+            columnInfo = getColumnInfo(getOgid(object));
+            object = FillName(object, userInfos, columnInfo);
+        }
+        return object;
+    }
+
+    @SuppressWarnings("unchecked")
+    private JSONObject FillName(JSONObject object, JSONObject userInfos, JSONObject columnInfo) {
+        String temp, tempName = "", ogid, column = "";
+        if (userInfos != null && userInfos.size() > 0) {
+            temp = object.getString("createUser");
+            if (StringHelper.InvaildString(temp)) {
+                tempName = userInfos.getString(temp).split(",")[1];
+            }
+            object.put("createName", tempName);
+            temp = object.getString("editUser");
+            if (StringHelper.InvaildString(temp)) {
+                tempName = userInfos.getString(temp).split(",")[1];
+            }
+            if (object.containsKey("ogid")) {
+                ogid = object.getString("ogid");
+                if (columnInfo != null && columnInfo.size() > 0) {
+                    if (StringHelper.InvaildString(ogid)) {
+                        column = columnInfo.getString(ogid);
+                    }
+                }
+            }
+            object.put("column", column);
+        }
+        return object;
+    }
+
+    private String getUid(JSONArray array) {
+        String uid = "";
+        JSONObject object;
+        if (array != null && array.size() > 0) {
+            for (Object obj : array) {
+                object = (JSONObject) obj;
+                uid = getUid(object) + ",";
+            }
+        }
+        return StringHelper.fixString(uid, ',');
+    }
+
+    private String getUid(JSONObject object) {
+        String temp, editTemp, uid = "";
+        if (object != null && object.size() > 0) {
+            temp = object.getString("createUser");
+            editTemp = object.getString("editUser");
+            if (StringHelper.InvaildString(temp) && StringHelper.InvaildString(editTemp)) {
+                if (!uid.contains(temp)) {
+                    uid += temp + ",";
+                }
+                if (!uid.contains(editTemp)) {
+                    uid += editTemp + ",";
+                }
+            }
+        }
+        return StringHelper.fixString(uid, ',');
+    }
+
+    private String getOgid(JSONArray array) {
+        String uid = "";
+        JSONObject object;
+        if (array != null && array.size() > 0) {
+            for (Object obj : array) {
+                object = (JSONObject) obj;
+                uid = getUid(object) + ",";
+            }
+        }
+        return StringHelper.fixString(uid, ',');
+    }
+
+    private String getOgid(JSONObject object) {
+        String temp, ogid = "";
+        if (object != null && object.size() > 0) {
+            temp = object.getString("ogid");
+            if (StringHelper.InvaildString(temp)) {
+                if (!ogid.contains(temp)) {
+                    ogid += temp + ",";
+                }
+            }
+        }
+        return StringHelper.fixString(ogid, ',');
+    }
+
+    /**
+     * 获取用户信息
+     * 
+     * @param uid
+     * @return
+     */
+    private JSONObject getColumnInfo(String ogid) {
+        String temp = (String) appsProxy.proxyCall("/GrapeContent/ContentGroup/getColumnName/" + ogid);
+        JSONObject object = JSONObject.toJSON(temp);
+        return object;
+    }
+
+    /**
+     * 获取用户信息
+     * 
+     * @param uid
+     * @return
+     */
+    private JSONObject getUserInfo(String uid) {
+        String temp = (String) appsProxy.proxyCall("/GrapeUser/user/getUserInfos/" + uid);
+        JSONObject object = JSONObject.toJSON(temp);
+        return object;
     }
 
     /***** --------------------后台接口-------------------- *****/
@@ -130,13 +274,14 @@ public class QuestionnaireInfo {
      */
     @SuppressWarnings("unchecked")
     public String insert(String info) {
+        Object infos = null;
         long questionCount = 0;
-        String questionIds="" ;
+        String questionIds = "";
         info = codec.DecodeFastJSON(info);
-        if (!StringHelper.InvaildString(info)) {
+        JSONObject object = JSONObject.toJSON(info);
+        if (object == null || object.size() <= 0) {
             return rMsg.netMSG(1, "无效参数");
         }
-        JSONObject object = JSONObject.toJSON(info);
         if (object != null && object.size() > 0) {
             if (object.containsKey("questionNum")) {
                 questionCount = object.getLong("questionNum");
@@ -151,9 +296,9 @@ public class QuestionnaireInfo {
             object.put("createUser", createUser);
             object.put("createTime", TimeHelper.nowMillis());
             object.put("editUser", createUser);
+            infos = (String) quest.data(object).autoComplete().insertOnce();
         }
-        info = (String) quest.data(object).autoComplete().insertOnce();
-        return info;
+        return (infos == null) ? rMsg.netMSG(100, "添加失败") : rMsg.netMSG(0, "添加成功");
     }
 
     /**
@@ -165,6 +310,7 @@ public class QuestionnaireInfo {
      */
     @SuppressWarnings("unchecked")
     public String update(String id, String info) {
+        JSONObject obj = null;
         if (!StringHelper.InvaildString(id)) {
             return rMsg.netMSG(1, "无效问卷id");
         }
@@ -177,8 +323,8 @@ public class QuestionnaireInfo {
             object.put("editUser", createUser);
             object.put("editTime", TimeHelper.nowMillis());
         }
-        info = (String) quest.data(object).autoComplete().insertOnce();
-        return info;
+        obj = quest.eq(pkString, id).data(object).update();
+        return (obj == null) ? rMsg.netMSG(100, "修改失败") : rMsg.netMSG(0, "修改成功");
     }
 
     /**
@@ -204,7 +350,7 @@ public class QuestionnaireInfo {
     }
 
     /**
-     * 分页获取题目类型
+     * 分页获取问卷信息
      * 
      * @param idx
      * @param pageSize
@@ -223,10 +369,10 @@ public class QuestionnaireInfo {
             if (userType >= UserMode.admin && userType < UserMode.root) {
                 quest.eq("wbid", currentWeb);
             }
-            count = quest.count();
+            count = quest.dirty().count();
             array = quest.page(idx, pageSize);
         }
-        return rMsg.netPAGE(idx, pageSize, count, getQuestionInfo(array));
+        return rMsg.netPAGE(idx, pageSize, count, getUserName(getQuestionInfo(array)));
     }
 
     /**
@@ -289,8 +435,8 @@ public class QuestionnaireInfo {
     private JSONObject getQuestionInfo(JSONObject object) {
         String[] value = null;
         String questionIds = "";
-        JSONObject tempObj = null;
         long isRandom = 0;
+        JSONObject tempObj= null;
         JSONArray questArray = new JSONArray();
         if (object != null && object.size() > 0) {
             if (object.containsKey("isRandom")) {
@@ -303,20 +449,41 @@ public class QuestionnaireInfo {
                 tempObj = new QuestionInfo().getQuestInfoById(questionIds);
                 value = questionIds.split(",");
             }
-            if (isRandom == 1 ) {
+            if (isRandom == 1) {
                 object.put("questionIds", new JSONArray());
-            }else{
-                if (tempObj!=null && tempObj.size() > 0 && value!=null) {
+            } else {
+                if (value != null) {
                     for (String qid : value) {
-                        if (tempObj.containsKey(qid)) {
-                            questArray.add(tempObj.getJson(qid));
-                        }
+                        questArray.add(getQuestion(qid, tempObj));
                     }
                 }
-                object.put("questionIds", new JSONArray());
+                object.put("questionIds", questArray);
             }
         }
         return object;
+    }
+
+    /**
+     * 获取题目详细信息
+     * @param qid
+     * @param tempObj
+     * @return
+     */
+    private JSONObject getQuestion(String qid, JSONObject tempObj) {
+        long type;
+        JSONObject temp = new JSONObject();
+        if (tempObj != null && tempObj.size() > 0) {
+            if (tempObj.containsKey(qid)) {
+                temp = tempObj.getJson(qid);
+                if (temp != null && temp.size() > 0) {
+                    type = temp.getLong("type");
+                    if (type != 0 || type != 1) {
+                        temp.remove("options");
+                    }
+                }
+            }
+        }
+        return temp;
     }
 
     /**

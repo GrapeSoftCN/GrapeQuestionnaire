@@ -18,10 +18,10 @@ import time.TimeHelper;
 
 /**
  * 
- * 问卷类型管理
+ * 题目类型管理
  *
  */
-public class QuestionnaireType {
+public class QuestionType1 {
     private GrapeTreeDBModel QuestType;
     private GrapeDBSpecField gDbSpecField;
     private String pkString;
@@ -32,10 +32,10 @@ public class QuestionnaireType {
     private String currentWeb = null;
     private int userType = 0;
 
-    public QuestionnaireType() {
+    public QuestionType1() {
         QuestType = new GrapeTreeDBModel();
         gDbSpecField = new GrapeDBSpecField();
-        gDbSpecField.importDescription(appsProxy.tableConfig("QuestionnaireType"));
+        gDbSpecField.importDescription(appsProxy.tableConfig("QuestionType"));
         QuestType.descriptionModel(gDbSpecField);
         QuestType.bindApp();
         pkString = QuestType.getPk();
@@ -51,10 +51,9 @@ public class QuestionnaireType {
     }
 
     /**
-     * 新增问卷类型
+     * 新增题目类型
      * 
      * @param info
-     *            待添加问卷类型信息，整体base64+特殊格式编码
      * @return
      */
     @SuppressWarnings("unchecked")
@@ -72,12 +71,10 @@ public class QuestionnaireType {
     }
 
     /**
-     * 修改问卷类型
+     * 修改题目类型
      * 
      * @param typeId
-     *            问卷id
      * @param typeInfo
-     *            待修改问卷类型信息，整体base64+特殊格式编码
      * @return
      */
     public String update(String typeId, String typeInfo) {
@@ -96,32 +93,30 @@ public class QuestionnaireType {
     }
 
     /**
-     * 删除问卷类型
+     * 删除题目类型
      * 
      * @param typeIds
      * @return
      */
     public String delete(String typeIds) {
-        String result = rMsg.netMSG(100, "删除失败");
+        String result = rMsg.netMSG(100, "修改失败");
         long code = 0;
         String[] value = null;
         if (!StringHelper.InvaildString(typeIds)) {
             return rMsg.netMSG(2, "无效类型id");
         }
         value = typeIds.split(",");
-        QuestType.or();
         if (value != null) {
             JSONArray condArray = model.deleteBuildCond(pkString, value);
-            QuestType.or().where(condArray);
-            if (QuestType.getCondCount() > 0) {
-                code = QuestType.deleteAll();
+            if (condArray!=null && condArray.size() > 0) {
+                code = QuestType.or().where(condArray).deleteAll(); 
             }
         }
         return code > 0 ? rMsg.netMSG(0, "删除成功") : result;
     }
 
     /**
-     * 分页获取问卷类型
+     * 分页获取题目类型
      * 
      * @param idx
      * @param pageSize
@@ -140,14 +135,14 @@ public class QuestionnaireType {
             if (userType >= UserMode.admin && userType < UserMode.root) {
                 QuestType.eq("wbid", currentWeb);
             }
-            count = QuestType.dirty().count();
+            count = QuestType.count();
             array = QuestType.page(idx, pageSize);
         }
         return rMsg.netPAGE(idx, pageSize, count, array);
     }
 
     /**
-     * 根据条件分页获取问卷类型
+     * 根据条件分页获取题目类型
      * 
      * @param idx
      * @param pageSize
@@ -178,7 +173,7 @@ public class QuestionnaireType {
     }
 
     /**
-     * 获取一条问卷类型数据
+     * 获取一条题目类型数据
      * 
      * @param typeId
      * @return
@@ -195,7 +190,7 @@ public class QuestionnaireType {
     }
 
     /**
-     * 获取所有问卷类型
+     * 获取所有题目类型
      * 
      * @return
      */

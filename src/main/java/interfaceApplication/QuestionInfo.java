@@ -11,11 +11,13 @@ import org.json.simple.JSONObject;
 import CommonModel.CModel;
 import JGrapeSystem.rMsg;
 import apps.appsProxy;
+import authority.plvDef.UserMode;
 import check.checkHelper;
 import database.dbFilter;
 import interfaceModel.GrapeDBSpecField;
 import interfaceModel.GrapeTreeDBModel;
 import security.codec;
+import session.session;
 import string.StringHelper;
 import time.TimeHelper;
 
@@ -28,8 +30,12 @@ public class QuestionInfo {
     private GrapeTreeDBModel QuestInfo;
     private GrapeDBSpecField gDbSpecField;
     private String pkString;
-    private String result = rMsg.netMSG(100, "修改失败");
     private CModel model;
+
+    private session se;
+    private JSONObject userInfo = null;
+    private String currentWeb = null;
+    private int userType = 0;
 
     public QuestionInfo() {
         QuestInfo = new GrapeTreeDBModel();
@@ -40,6 +46,13 @@ public class QuestionInfo {
         pkString = QuestInfo.getPk();
 
         model = new CModel();
+
+        se = new session();
+        userInfo = se.getDatas();
+        if (userInfo != null && userInfo.size() > 0) {
+            currentWeb = userInfo.getString("currentWeb");
+            userType = userInfo.getInt("userType");
+        }
     }
 
     /**
@@ -57,18 +70,20 @@ public class QuestionInfo {
             return rMsg.netMSG(1, "无效参数");
         }
         object.put("createTime", TimeHelper.nowMillis());
+        object.put("wbid", currentWeb);
         questionId = (String) QuestInfo.data(object).autoComplete().insertOnce();
         return get(questionId);
     }
 
     /**
-     * 修改题目类型
+     * 修改题目信息
      * 
      * @param questionId
      * @param questionInfo
      * @return
      */
     public String update(String questionId, String questionInfo) {
+        String result = rMsg.netMSG(100, "修改失败");
         questionInfo = codec.DecodeFastJSON(questionInfo);
         if (!StringHelper.InvaildString(questionId)) {
             return rMsg.netMSG(2, "无效类型id");
@@ -89,6 +104,7 @@ public class QuestionInfo {
      * @return
      */
     public String delete(String questionIds) {
+        String result = rMsg.netMSG(100, "删除失败");
         long code = 0;
         String[] value = null;
         if (!StringHelper.InvaildString(questionIds)) {
@@ -121,13 +137,18 @@ public class QuestionInfo {
         if (pageSize <= 0) {
             return rMsg.netMSG(false, "页长度错误");
         }
-        count = QuestInfo.count();
-        array = QuestInfo.page(idx, pageSize);
+        if (userType > 0) {
+            if (userType >= UserMode.admin && userType < UserMode.root) {
+                QuestInfo.eq("wbid", currentWeb);
+            }
+            count = QuestInfo.count();
+            array = QuestInfo.page(idx, pageSize);
+        }
         return rMsg.netPAGE(idx, pageSize, count, array);
     }
 
     /**
-     * 根据条件分页获取题目类型
+     * 根据条件分页获取题目信息
      * 
      * @param idx
      * @param pageSize
@@ -143,15 +164,27 @@ public class QuestionInfo {
         if (pageSize <= 0) {
             return rMsg.netMSG(false, "页长度错误");
         }
-        JSONArray condArray = JSONArray.toJSONArray(condString);
-        if (condArray != null && condArray.size() > 0) {
-            array = QuestInfo.where(condArray).page(idx, pageSize);
+
+        JSONArray condArray = model.searchBuildCond(condString);
+        if (userType > 0) {
+            if (userType >= UserMode.admin && userType < UserMode.root) {
+                QuestInfo.eq("wbid", currentWeb);
+            }
+            if (condArray != null && condArray.size() > 0) {
+                array = QuestInfo.where(condArray).page(idx, pageSize);
+            } else {
+                return rMsg.netMSG(false, "无效条件");
+            }
         }
+        // JSONArray condArray = JSONArray.toJSONArray(condString);
+        // if (condArray != null && condArray.size() > 0) {
+        // array = QuestInfo.where(condArray).page(idx, pageSize);
+        // }
         return rMsg.netPAGE(idx, pageSize, count, array);
     }
 
     /**
-     * 获取一条题目类型数据
+     * 获取一条题目信息数据
      * 
      * @param questionId
      * @return
@@ -161,12 +194,14 @@ public class QuestionInfo {
         if (!StringHelper.InvaildString(questionId)) {
             return rMsg.netMSG(2, "无效类型id");
         }
-        object = QuestInfo.eq(pkString, questionId).find();
+        if (ObjectId.isValid(questionId) || checkHelper.isInt(questionId)) {
+            object = QuestInfo.eq(pkString, questionId).find();
+        }
         return rMsg.netMSG(true, (object != null && object.size() > 0) ? object : new JSONObject());
     }
 
     /**
-     * 获取所有题目类型
+     * 获取所有题目信息
      * 
      * @return
      */
@@ -175,7 +210,7 @@ public class QuestionInfo {
     }
 
     /**
-     * 根据题目类型，获取指定数量的的题目信息
+     * 根据题目信息，获取指定数量的的题目信息
      * 
      * @param num
      * @param typeIds
@@ -208,7 +243,7 @@ public class QuestionInfo {
                 array = QuestInfo.field("name,type,options,answer").select();
             }
             if (array != null && array.size() > 0) {
-                for (Object obj : condArray) {
+                for (Object obj : array) {
                     object = (JSONObject) obj;
                     tempID = object.getMongoID("_id");
                     rjson.put(tempID, object);
@@ -234,9 +269,7 @@ public class QuestionInfo {
         if (value != null && value.length > 0) {
             for (String typeId : value) {
                 if (StringHelper.InvaildString(typeId)) {
-                    if (ObjectId.isValid(typeId) || checkHelper.isInt(typeId)) {
-                        filter.eq(pkString, typeId);
-                    }
+                    filter.eq("type", Integer.parseInt(typeId));
                 }
             }
         }
@@ -263,6 +296,7 @@ public class QuestionInfo {
 
     /**
      * 获取随机题目id
+     * 
      * @param num
      * @param list
      * @return
