@@ -47,7 +47,7 @@ public class Answer {
         JSONArray array = null;
         JSONObject object;
         String eid = new Examination().getEid(qid); // 获取考场id
-        info = codec.encodeFastJSON(info);
+        info = codec.DecodeFastJSON(info);
         if (StringHelper.InvaildString(info)) {
             array = JSONArray.toJSONArray(info);
             array = getUserResult(eid, array);

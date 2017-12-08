@@ -59,20 +59,19 @@ public class Examination {
         object.put("startTime", TimeHelper.nowMillis());
         object.put("uid", createUser);
         questionId = (String) Exam.data(object).autoComplete().insertOnce();
-        return getEid(questionId);
+        return questionId;
     }
 
     // 获取考场id
+    @SuppressWarnings("unchecked")
     protected String getEid(String questionId) {
         String eid = "";
-        JSONObject object = null;
+        JSONObject object = new JSONObject();
         if (!StringHelper.InvaildString(questionId)) {
             return rMsg.netMSG(2, "无效类型id");
         }
-        object = Exam.eq(pkString, questionId).field("_id").find();
-        if (object != null && object.size() > 0) {
-            eid = object.getMongoID("_id");
-        }
+        object.put("qid", questionId);
+        eid = insert(codec.encodeFastJSON(object.toJSONString()));
         return eid;
     }
 

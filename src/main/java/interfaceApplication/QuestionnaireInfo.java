@@ -289,7 +289,7 @@ public class QuestionnaireInfo {
             if (object.containsKey("questionIds")) {
                 questionIds = object.getString("questionIds");
             }
-            if (questionIds.split(",").length > questionCount) {
+            if (StringHelper.InvaildString(questionIds) && questionIds.split(",").length > questionCount) {
                 return rMsg.netMSG(false, "已设置题数大于总题数，添加问卷失败");
             }
             object.put("wbid", currentWeb);
@@ -470,17 +470,10 @@ public class QuestionnaireInfo {
      * @return
      */
     private JSONObject getQuestion(String qid, JSONObject tempObj) {
-        long type;
         JSONObject temp = new JSONObject();
         if (tempObj != null && tempObj.size() > 0) {
             if (tempObj.containsKey(qid)) {
                 temp = tempObj.getJson(qid);
-                if (temp != null && temp.size() > 0) {
-                    type = temp.getLong("type");
-                    if (type != 0 || type != 1) {
-                        temp.remove("options");
-                    }
-                }
             }
         }
         return temp;
