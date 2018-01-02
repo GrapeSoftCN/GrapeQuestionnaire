@@ -7,9 +7,10 @@ import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
-import check.checkHelper;
-import database.dbFilter;
-import string.StringHelper;
+import common.java.check.checkHelper;
+import common.java.database.dbFilter;
+import common.java.string.StringHelper;
+
 
 public class CModel {
 

@@ -3,14 +3,14 @@ package interfaceApplication;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
-import JGrapeSystem.rMsg;
-import apps.appsProxy;
-import interfaceModel.GrapeDBSpecField;
-import interfaceModel.GrapeTreeDBModel;
-import security.codec;
-import session.session;
-import string.StringHelper;
-import time.TimeHelper;
+import common.java.JGrapeSystem.rMsg;
+import common.java.apps.appsProxy;
+import common.java.interfaceModel.GrapeDBSpecField;
+import common.java.interfaceModel.GrapeTreeDBModel;
+import common.java.security.codec;
+import common.java.session.session;
+import common.java.string.StringHelper;
+import common.java.time.TimeHelper;
 
 public class Answer {
     private GrapeTreeDBModel answer;
